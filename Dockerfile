@@ -8,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     STREAMLIT_SERVER_ENABLE_CORS=false \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_SERVER_PORT=7860 \
-    PORT=7860
+    PORT=7860 \
+    STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
 
 WORKDIR /app
 
@@ -25,6 +26,10 @@ RUN useradd -m appuser
 
 EXPOSE 7860
 
-# IMPORTANT: run Streamlit on port 7860
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+# and in CMD also pass the flag explicitly
+CMD ["streamlit", "run", "app.py",
+     "--server.port=7860",
+     "--server.address=0.0.0.0",
+     "--server.enableXsrfProtection=false"]
+
 
