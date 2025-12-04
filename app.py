@@ -246,7 +246,7 @@ with st.spinner("Loading data…"):
     else:
         df, cols = load_data(csv_source)
 
-st.sidebar.caption(f"Detected columns → {cols}")(f"Detected columns → {cols}")
+st.sidebar.caption(f"Detected columns → {cols}")
 
 # User inputs
 age = st.sidebar.number_input("Traveler age", min_value=5, max_value=100, value=30)
