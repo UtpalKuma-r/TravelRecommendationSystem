@@ -21,7 +21,8 @@ from sklearn.pipeline import Pipeline
 
 st.set_page_config(page_title="Travel Recommender (Traveler Trip Dataset)", layout="wide")
 
-MODEL_DIR = ".trip_model"
+import tempfile
+MODEL_DIR = os.environ.get("MODEL_DIR", os.path.join(tempfile.gettempdir(), "trip_model"))
 os.makedirs(MODEL_DIR, exist_ok=True)
 MODEL_PATH = os.path.join(MODEL_DIR, "clf.pkl")
 ENC_PATH = os.path.join(MODEL_DIR, "enc.pkl")
@@ -200,20 +201,52 @@ def write_penalties(p):
 # -------------------------
 
 st.sidebar.header("Data & Inputs")
-csv_path = st.sidebar.text_input(
-    "Path to Traveler Trip CSV",
-    value="Traveler_trip_dataset.csv",
-    help="Download from Kaggle and enter the CSV path here.",
-)
+# Allow multiple ways to provide data: env var, common paths, or upload
+csv_env = os.environ.get("CSV_PATH", "")
+common_candidates = [
+    csv_env,
+    csv_env.strip() if csv_env else "",
+    "Traveler_trip_dataset.csv",
+    "/app/Traveler_trip_dataset.csv",
+    "/app/data/Traveler_trip_dataset.csv",
+    "data/Traveler_trip_dataset.csv",
+]
 
-if not os.path.exists(csv_path):
-    st.info("Provide the correct path to the traveler trip CSV in the sidebar to begin.")
+uploaded = st.sidebar.file_uploader("Or upload the traveler trip CSV", type=["csv"])
+
+def resolve_csv():
+    # 1) uploaded file takes precedence
+    if uploaded is not None:
+        return uploaded, True
+    # 2) sidebar path if provided
+    p = st.sidebar.text_input(
+        "Path to Traveler Trip CSV",
+        value=common_candidates[2],
+        help="Path inside the container/Space. You can also upload above.",
+    )
+    if os.path.exists(p):
+        return p, False
+    # 3) try common candidates
+    for cand in common_candidates:
+        if cand and os.path.exists(cand):
+            return cand, False
+    return None, False
+
+csv_source, is_buffer = resolve_csv()
+if csv_source is None:
+    st.info("Provide the traveler trip CSV via **upload** or a valid **path** in the sidebar to begin. You can also set the CSV_PATH environment variable.")
     st.stop()
 
 with st.spinner("Loading data…"):
-    df, cols = load_data(csv_path)
+    if uploaded is not None:
+        df = pd.read_csv(uploaded)
+        cols = infer_columns(df)
+        ensure_duration(df, cols); ensure_month(df, cols)
+        df = df[pd.notna(df[cols["dest"]])].reset_index(drop=True)
+    else:
+        df, cols = load_data(csv_source)
 
-st.sidebar.caption(f"Detected columns → {cols}")
+st.sidebar.caption(f"Detected columns → {cols}")(f"Detected columns → {cols}")
 
 # User inputs
 age = st.sidebar.number_input("Traveler age", min_value=5, max_value=100, value=30)
